@@ -28,7 +28,7 @@
         <activity android:name=".BudgetActivity" />
         <activity android:name=".ReportsActivity" />
         <activity android:name=".FeedbackActivity" />
-
+        <activity android:name=".ForgotPasswordActivity" />
     </application>
 
 </manifest>

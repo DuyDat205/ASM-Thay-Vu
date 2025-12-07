@@ -10,44 +10,45 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class LoginActivity extends AppCompatActivity {
-    private EditText etUsername;
+    private EditText etUser, etPass;
     private Button btnLogin;
-    private TextView tvRegister; // Biến cho dòng chữ Đăng ký
+    private TextView tvRegister, tvForgot;
+    private DatabaseHelper myDB;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // 1. Ánh xạ ID (Phải khớp với ID trong file XML)
-        etUsername = findViewById(R.id.etUsername);
+        myDB = new DatabaseHelper(this);
+
+        etUser = findViewById(R.id.etUsername);
+        etPass = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         tvRegister = findViewById(R.id.tvRegister);
+        tvForgot = findViewById(R.id.tvForgotPassword);
 
-        // 2. Sự kiện nút Đăng nhập
-        btnLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String username = etUsername.getText().toString();
-                if(!username.isEmpty()){
-                    Toast.makeText(LoginActivity.this, "Login Successful!", Toast.LENGTH_SHORT).show();
-                    // Chuyển sang màn hình chính
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
-                    finish(); // Đóng màn hình Login lại
+        btnLogin.setOnClickListener(v -> {
+            String user = etUser.getText().toString().trim();
+            String pass = etPass.getText().toString().trim();
+
+            if (user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Please enter fields", Toast.LENGTH_SHORT).show();
+            } else {
+                if (myDB.checkUser(user, pass)) {
+                    Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                    finish();
                 } else {
-                    Toast.makeText(LoginActivity.this, "Please enter username", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Invalid Credentials", Toast.LENGTH_SHORT).show();
                 }
             }
         });
 
-        // 3. Sự kiện bấm vào chữ "Create Account" -> Chuyển sang màn hình Đăng ký
-        tvRegister.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                startActivity(intent);
-            }
-        });
+        tvRegister.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
+
+        if (tvForgot != null) {
+            tvForgot.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, ForgotPasswordActivity.class)));
+        }
     }
 }

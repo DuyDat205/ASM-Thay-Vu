@@ -1,12 +1,12 @@
 package com.example.campusexpensemanager;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageButton; // Import ImageButton
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView tvTotalBalance;
     private RecyclerView rvExpenses;
+    private DatabaseHelper myDB;
     private MyAdapter adapter;
     private ArrayList<ExpenseModel> expenseList;
 
@@ -28,39 +29,59 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        myDB = new DatabaseHelper(this);
         tvTotalBalance = findViewById(R.id.tvTotalBalance);
         rvExpenses = findViewById(R.id.rvExpenses);
 
-        // Nút FAB Thêm mới
         FloatingActionButton fabAdd = findViewById(R.id.fabAdd);
         fabAdd.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, AddExpenseActivity.class)));
 
-        // Các nút điều hướng khác
         findViewById(R.id.navReports).setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ReportsActivity.class)));
         findViewById(R.id.navBudget).setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BudgetActivity.class)));
         findViewById(R.id.navFeedback).setOnClickListener(v -> startActivity(new Intent(MainActivity.this, FeedbackActivity.class)));
 
-        // TẠO DỮ LIỆU GIẢ ĐỂ HIỂN THỊ FRONTEND
+        loadData();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadData();
+    }
+
+    private void loadData() {
+        double totalSpent = myDB.getTotalSpent();
+        double initialBudget = 2000.0;
+        double remaining = initialBudget - totalSpent;
+        tvTotalBalance.setText("$" + String.format("%.2f", remaining));
+
         expenseList = new ArrayList<>();
-        expenseList.add(new ExpenseModel("Lunch with friends", "Food", 50.0));
-        expenseList.add(new ExpenseModel("Bus Ticket", "Transport", 2.5));
-        expenseList.add(new ExpenseModel("Monthly Rent", "Rent", 500.0));
+        Cursor cursor = myDB.getAllExpenses();
+        if (cursor.getCount() != 0) {
+            while (cursor.moveToNext()) {
+                expenseList.add(new ExpenseModel(
+                        cursor.getString(0),
+                        cursor.getString(2),
+                        cursor.getString(3),
+                        cursor.getString(4),
+                        cursor.getDouble(1)
+                ));
+            }
+        }
 
         adapter = new MyAdapter(this, expenseList);
         rvExpenses.setAdapter(adapter);
         rvExpenses.setLayoutManager(new LinearLayoutManager(this));
     }
 
-    // --- MODEL ---
     class ExpenseModel {
-        String desc, category;
+        String id, desc, category, date;
         double amount;
-        public ExpenseModel(String d, String c, double a) {
-            this.desc = d; this.category = c; this.amount = a;
+        public ExpenseModel(String id, String d, String c, String date, double a) {
+            this.id = id; this.desc = d; this.category = c; this.date = date; this.amount = a;
         }
     }
 
-    // --- ADAPTER (Xử lý hiệu ứng Sửa/Xóa) ---
     class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         private android.content.Context context;
         private ArrayList<ExpenseModel> list;
@@ -81,19 +102,24 @@ public class MainActivity extends AppCompatActivity {
         public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
             ExpenseModel item = list.get(position);
             holder.tvDesc.setText(item.desc);
-            holder.tvCategory.setText(item.category + " • 27/11/2025");
+            holder.tvCategory.setText(item.category + " • " + item.date);
             holder.tvAmount.setText("-$" + item.amount);
 
-            // 1. FRONTEND: Bấm vào dòng -> Mở giao diện Sửa
             holder.itemView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, AddExpenseActivity.class);
-                intent.putExtra("isEditMode", true); // Báo hiệu là mở chế độ Sửa
+                intent.putExtra("id", item.id);
+                intent.putExtra("amount", String.valueOf(item.amount));
+                intent.putExtra("desc", item.desc);
+                intent.putExtra("date", item.date);
+                intent.putExtra("category", item.category);
+                intent.putExtra("isEditMode", true);
                 context.startActivity(intent);
             });
 
-            // 2. FRONTEND: Bấm vào thùng rác -> Hiện thông báo Xóa
             holder.btnDelete.setOnClickListener(v -> {
-                Toast.makeText(context, "Deleted Item (Frontend Demo)", Toast.LENGTH_SHORT).show();
+                myDB.deleteExpense(item.id);
+                loadData();
+                Toast.makeText(context, "Deleted!", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -102,8 +128,7 @@ public class MainActivity extends AppCompatActivity {
 
         class MyViewHolder extends RecyclerView.ViewHolder {
             TextView tvDesc, tvCategory, tvAmount;
-            ImageButton btnDelete; // Nút xóa
-
+            ImageButton btnDelete;
             MyViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvDesc = itemView.findViewById(R.id.tvItemDesc);

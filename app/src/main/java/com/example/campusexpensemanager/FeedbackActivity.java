@@ -14,7 +14,6 @@ public class FeedbackActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_feedback);
 
-        // Header Navigation
         ImageButton btnBack = findViewById(R.id.btnBack);
         ImageButton btnHome = findViewById(R.id.btnHome);
 
@@ -26,7 +25,6 @@ public class FeedbackActivity extends AppCompatActivity {
             finish();
         });
 
-        // Xử lý Rating Bar (Frontend Effect)
         RatingBar ratingBar = findViewById(R.id.ratingBar);
         ratingBar.setOnRatingBarChangeListener((ratingBar1, rating, fromUser) -> {
             if(rating >= 4) {
@@ -34,7 +32,6 @@ public class FeedbackActivity extends AppCompatActivity {
             }
         });
 
-        // Nút Send
         Button btnSend = findViewById(R.id.btnSendFeedback);
         btnSend.setOnClickListener(v -> {
             Toast.makeText(FeedbackActivity.this, "Feedback Sent to Developer!", Toast.LENGTH_SHORT).show();

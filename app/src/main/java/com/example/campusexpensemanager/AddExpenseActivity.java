@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Spinner;
@@ -16,68 +15,85 @@ import java.util.Calendar;
 
 public class AddExpenseActivity extends AppCompatActivity {
 
-    private EditText etAmount, etDescription, etDate; // Thêm etDate
+    private EditText etAmount, etDescription, etDate;
     private Spinner spinnerCategory;
     private Button btnSave;
     private TextView tvHeaderTitle;
+    private DatabaseHelper myDB;
+
+    private boolean isEdit = false;
+    private String expenseId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_expense);
 
-        // Ánh xạ
+        myDB = new DatabaseHelper(this);
+        
         etAmount = findViewById(R.id.etAmount);
         etDescription = findViewById(R.id.etDescription);
-        etDate = findViewById(R.id.etDate); // Ánh xạ ô ngày
+        etDate = findViewById(R.id.etDate);
         spinnerCategory = findViewById(R.id.spinnerCategory);
         btnSave = findViewById(R.id.btnSave);
         tvHeaderTitle = findViewById(R.id.tvHeaderTitle);
         ImageButton btnBack = findViewById(R.id.btnBack);
 
-        // Setup Spinner
-        String[] categories = {"Food", "Transport", "Rent", "Entertainment", "Education"};
+        String[] categories = {"Food & Dining", "Transport", "Rent", "Entertainment", "Education"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories);
         spinnerCategory.setAdapter(adapter);
 
-        // --- 1. FRONTEND: HIỆU ỨNG CHỌN NGÀY ---
-        etDate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final Calendar c = Calendar.getInstance();
-                int year = c.get(Calendar.YEAR);
-                int month = c.get(Calendar.MONTH);
-                int day = c.get(Calendar.DAY_OF_MONTH);
-
-                DatePickerDialog datePickerDialog = new DatePickerDialog(AddExpenseActivity.this,
-                        new DatePickerDialog.OnDateSetListener() {
-                            @Override
-                            public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                                etDate.setText(dayOfMonth + "/" + (monthOfYear + 1) + "/" + year);
-                            }
-                        }, year, month, day);
-                datePickerDialog.show();
-            }
+        etDate.setOnClickListener(v -> {
+            Calendar c = Calendar.getInstance();
+            new DatePickerDialog(this, (view, year, month, day) ->
+                    etDate.setText(day + "/" + (month + 1) + "/" + year),
+                    c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
         });
 
-        // --- 2. FRONTEND: GIẢ LẬP CHẾ ĐỘ SỬA (EDIT MODE) ---
-        // Nếu Activity này được mở kèm tín hiệu "isEditMode", nó sẽ biến thành form Sửa
-        if (getIntent().getBooleanExtra("isEditMode", false)) {
-            tvHeaderTitle.setText("Edit Expense"); // Đổi tiêu đề
-            btnSave.setText("Update Changes");     // Đổi tên nút
-
-            // Điền sẵn dữ liệu giả để Demo
-            etAmount.setText("50.00");
-            etDescription.setText("Lunch with friends");
-            etDate.setText("27/11/2025");
+        if(etDate.getText().toString().isEmpty()) {
+            Calendar c = Calendar.getInstance();
+            etDate.setText(c.get(Calendar.DAY_OF_MONTH) + "/" + (c.get(Calendar.MONTH)+1) + "/" + c.get(Calendar.YEAR));
         }
 
-        // Nút Back
+        if (getIntent().getBooleanExtra("isEditMode", false)) {
+            isEdit = true;
+            expenseId = getIntent().getStringExtra("id");
+            etAmount.setText(getIntent().getStringExtra("amount"));
+            etDescription.setText(getIntent().getStringExtra("desc"));
+            etDate.setText(getIntent().getStringExtra("date"));
+
+            String cat = getIntent().getStringExtra("category");
+            if(cat != null) {
+                int spinnerPosition = adapter.getPosition(cat);
+                spinnerCategory.setSelection(spinnerPosition);
+            }
+
+            tvHeaderTitle.setText("Edit Expense");
+            btnSave.setText("Update Changes");
+        }
+
         btnBack.setOnClickListener(v -> finish());
 
-        // Nút Save (Chỉ hiện thông báo giả)
         btnSave.setOnClickListener(v -> {
-            Toast.makeText(AddExpenseActivity.this, "Saved Successfully (Frontend Demo)!", Toast.LENGTH_SHORT).show();
+            String amountStr = etAmount.getText().toString();
+            String desc = etDescription.getText().toString();
+            String date = etDate.getText().toString();
+            String category = spinnerCategory.getSelectedItem().toString();
+
+            if (amountStr.isEmpty()) {
+                Toast.makeText(this, "Please enter amount", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            double amount = Double.parseDouble(amountStr);
+
+            if (isEdit) {
+                myDB.updateExpense(expenseId, amount, desc, category, date);
+                Toast.makeText(this, "Updated!", Toast.LENGTH_SHORT).show();
+            } else {
+                myDB.addExpense(amount, desc, category, date);
+                Toast.makeText(this, "Added!", Toast.LENGTH_SHORT).show();
+            }
             finish();
         });
     }
